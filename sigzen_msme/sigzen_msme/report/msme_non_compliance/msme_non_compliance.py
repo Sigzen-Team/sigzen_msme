@@ -136,11 +136,3 @@ def get_data(filters):
 
     return data
 
-
-
-def get_fiscal_year_dates(fiscal_year):
-   
-    fiscal_year_start_date = datetime.datetime(fiscal_year - 1, 4, 1)
-    print(fiscal_year_start_date)
-    fiscal_year_end_date = datetime.datetime(fiscal_year, 3, 31)
-    return fiscal_year_start_date, fiscal_year_end_date
