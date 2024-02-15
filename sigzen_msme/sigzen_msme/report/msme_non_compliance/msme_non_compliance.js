@@ -17,15 +17,13 @@ frappe.query_reports["MSME Non-Compliance"] = {
 			"label": __("Fiscal Year"),
 			"fieldtype": "Link",
 			"options": "Fiscal Year",
-			"default": erpnext.utils.get_fiscal_year(frappe.datetime.get_today()),
 			"reqd": 1,
 			"on_change": function(query_report) {
 				var fiscal_year = query_report.get_values().fiscal_year;
 				if (!fiscal_year) {
 					return;
 				}
-				frappe.query_report.refresh();
-
+				
 				frappe.model.with_doc("Fiscal Year", fiscal_year, function(r) {
 					var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 					frappe.query_report.set_filter_value({
@@ -33,6 +31,7 @@ frappe.query_reports["MSME Non-Compliance"] = {
 						to_date: fy.year_end_date
 					});
 				});
+				frappe.query_report.refresh();
 			}
 		},
 		{
