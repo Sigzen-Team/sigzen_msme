@@ -24,6 +24,8 @@ frappe.query_reports["MSME Non-Compliance"] = {
 				if (!fiscal_year) {
 					return;
 				}
+				frappe.query_report.refresh();
+
 				frappe.model.with_doc("Fiscal Year", fiscal_year, function(r) {
 					var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 					frappe.query_report.set_filter_value({
@@ -38,14 +40,14 @@ frappe.query_reports["MSME Non-Compliance"] = {
 			"label": __("From Date"),
 			"fieldtype": "Date",
 			"default": frappe.defaults.get_user_default("year_start_date"),
-			"hidden": 1,
+			
 		},
 		{
 			"fieldname": "to_date",
 			"label": __("To Date"),
 			"fieldtype": "Date",
 			"default": frappe.defaults.get_user_default("year_end_date"),
-			"hidden": 1,
+			
 		},
 		{
 			"fieldname": "supplier",
