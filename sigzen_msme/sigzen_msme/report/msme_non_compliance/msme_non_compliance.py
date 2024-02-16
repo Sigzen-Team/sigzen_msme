@@ -171,6 +171,7 @@ def get_data(filters):
 
         payment_entries = frappe.get_all("Payment Entry", filters={"reference_name": invoice.name}, fields=["posting_date","paid_amount"])
         journal_entry = frappe.get_all("Journal Entry", filters={"reference_name": invoice.name}, fields=["posting_date","total_debit"])
+        
         if payment_entries:
             for entry in payment_entries:
                 posting_date = entry.get("posting_date")
@@ -188,7 +189,9 @@ def get_data(filters):
                     paid_amount_after += entry.get("total_debit")
                     disallowed_amount += entry.get("total_debit")  
                 else:
-                    paid_amount_before += entry.get("total_debit")  
+                    paid_amount_before += entry.get("total_debit")
+        if due_date < datetime.date.today() and paid_amount_after == 0:
+            disallowed_amount += invoice.outstanding_amount
 
         if invoice.custom_msme_registered == "Yes" and invoice.base_rounded_total != paid_amount_before and invoice.custom_msme_type != "Medium":
             row = {
