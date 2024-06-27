@@ -19,11 +19,13 @@ frappe.query_reports["MSME Non-Compliance"] = {
 			"options": "Fiscal Year",
 			"reqd": 1,
 			"on_change": function(query_report) {
+				// Get the fiscal year value
 				var fiscal_year = query_report.get_values().fiscal_year;
 				if (!fiscal_year) {
 					return;
 				}
 				
+				// Fetch fiscal year document and set from_date and to_date filters
 				frappe.model.with_doc("Fiscal Year", fiscal_year, function(r) {
 					var fy = frappe.model.get_doc("Fiscal Year", fiscal_year);
 					frappe.query_report.set_filter_value({
@@ -80,9 +82,6 @@ frappe.query_reports["MSME Non-Compliance"] = {
 			"fieldtype": "Select",
 			"options": '\nYes\nNo',
 			
-		},
-		
-		
-
-	],
+		}
+	]
 };
