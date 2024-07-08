@@ -1,16 +1,26 @@
 # Copyright (c) 2024, Sigzen Msme and contributors
 # For license information, please see license.txt
 
-from erpnext.accounts.doctype import journal_entry
 import frappe
 from frappe import _, qb, scrub
-import datetime
+from erpnext.accounts.doctype import journal_entry
 from frappe.utils import *
+import datetime
 
 
 def execute(filters=None):
+    """
+    Main function to execute the report and return columns and data
+    """
     data = get_data(filters)
+    columns = get_columns(filters)
+    return columns, data
 
+
+def get_columns(filters):
+    """
+    Define the columns for the report
+    """
     columns = [
         {
             "fieldname": "purchase_id",
@@ -93,103 +103,61 @@ def execute(filters=None):
             "width": 180
         }
     ])
-    return columns, data
+    return columns
+
+from frappe.query_builder import DocType
 
 def get_data(filters):
-    data = []
-   
-  
-    query = """
-        SELECT 
-            `tabPurchase Invoice`.name,
-            `tabSupplier`.name as supplier,
-            `tabSupplier`.custom_contract_done,
-            `tabSupplier`.custom_msme_registered,
-            `tabSupplier`.custom_msme_type,
-            `tabPurchase Invoice`.posting_date,
-            `tabPurchase Invoice`.base_rounded_total,
-            `tabPurchase Invoice`.outstanding_amount,
-            `tabPurchase Invoice`.status,
-            `tabPurchase Invoice`.bill_no,
-            `tabPurchase Invoice`.bill_date  
-        FROM
-            `tabSupplier`,
-            `tabPurchase Invoice`
-        WHERE
-            `tabPurchase Invoice`.posting_date between %(from_date)s AND %(to_date)s AND
-            `tabPurchase Invoice`.supplier = `tabSupplier`.name AND
-            `tabPurchase Invoice`.status NOT IN ('Cancelled', 'Draft', 'Return', 'Debit Note Issued')
-            
-        
-            
     """
+    Fetch data based on filters using Frappe's Query Builder
+    """
+    data = []
+    
+    PurchaseInvoice = DocType('Purchase Invoice')
+    Supplier = DocType('Supplier')
+    
+    query = (
+        frappe.qb.from_(PurchaseInvoice)
+        .join(Supplier)
+        .on(PurchaseInvoice.supplier == Supplier.name)
+        .select(
+            PurchaseInvoice.name,
+            Supplier.name.as_('supplier'),
+            Supplier.custom_contract_done,
+            Supplier.custom_msme_registered,
+            Supplier.custom_msme_type,
+            PurchaseInvoice.posting_date,
+            PurchaseInvoice.base_rounded_total,
+            PurchaseInvoice.outstanding_amount,
+            PurchaseInvoice.status,
+            PurchaseInvoice.bill_no,
+            PurchaseInvoice.bill_date
+        )
+        .where(
+            (PurchaseInvoice.posting_date.between(filters.from_date, filters.to_date)) &
+            (PurchaseInvoice.status.notin(['Cancelled', 'Draft', 'Return', 'Debit Note Issued']))
+        )
+    )
     
     if filters.supplier:
-        query += " AND `tabPurchase Invoice`.supplier = %(supplier)s"
+        query = query.where(PurchaseInvoice.supplier == filters.supplier)
     if filters.supplier_group:
-        query += " AND `tabSupplier`.supplier_group = %(supplier_group)s"
+        query = query.where(Supplier.supplier_group == filters.supplier_group)
     if filters.custom_msme_type:
-        query += " AND `tabSupplier`.custom_msme_type = %(custom_msme_type)s"
+        query = query.where(Supplier.custom_msme_type == filters.custom_msme_type)
     if filters.custom_contract_done:
-        query += " AND `tabSupplier`.custom_contract_done = %(custom_contract_done)s"
+        query = query.where(Supplier.custom_contract_done == filters.custom_contract_done)
     
+    purchase_invoices = query.groupby(PurchaseInvoice.name).run(as_dict=True)
     
-    purchase_invoices = frappe.db.sql(query+"GROUP BY `tabPurchase Invoice`.name", {'supplier': filters.supplier, 'supplier_group': filters.supplier_group,'custom_msme_type': filters.custom_msme_type,'custom_contract_done': filters.custom_contract_done,'from_date':filters.from_date,'to_date':filters.to_date}, as_dict=True)#// nosemgrep
-
     msme_settings = frappe.get_doc('MSME Settings')
     yes = msme_settings.get('yes')
     no = msme_settings.get('no')
     
-
     for invoice in purchase_invoices:
-        if invoice.custom_contract_done == "Yes":
-            if filters.ageing_based_on == "Posting Date":
-                if invoice.posting_date:
-                    due_date = (invoice.posting_date - datetime.timedelta(1)) + datetime.timedelta(days=yes)
-                elif invoice.bill_date:
-                    due_date = (invoice.bill_date - datetime.timedelta(1)) + datetime.timedelta(days=yes)
-            elif filters.ageing_based_on == "Supplier Invoice Date":
-                if invoice.bill_date:
-                    due_date = (invoice.bill_date - datetime.timedelta(1)) + datetime.timedelta(days=yes)
-                elif invoice.posting_date:
-                    due_date = (invoice.posting_date - datetime.timedelta(1)) + datetime.timedelta(days=yes)
-        else:
-            if filters.ageing_based_on == "Posting Date":
-                if invoice.posting_date:
-                    due_date = (invoice.posting_date - datetime.timedelta(1)) + datetime.timedelta(days=no)
-                elif invoice.bill_date:
-                    due_date = (invoice.bill_date - datetime.timedelta(1)) + datetime.timedelta(days=no)
-            elif filters.ageing_based_on == "Supplier Invoice Date":
-                if invoice.bill_date:
-                    due_date = (invoice.bill_date - datetime.timedelta(1)) + datetime.timedelta(days=no)
-                elif invoice.posting_date:
-                    due_date = (invoice.posting_date - datetime.timedelta(1)) + datetime.timedelta(days=no)
-
-        paid_amount_after = 0
-        paid_amount_before = 0
-        disallowed_amount = 0
-
-        payment_entries = frappe.get_all("Payment Entry", filters={"reference_name": invoice.name}, fields=["posting_date","paid_amount"])
-        journal_entry = frappe.get_all("Journal Entry", filters={"reference_name": invoice.name}, fields=["posting_date","total_debit"])
+        due_date = calculate_due_date(invoice, filters, yes, no)
+        paid_amount_before, paid_amount_after, disallowed_amount = calculate_payments(invoice, due_date)
         
-        if payment_entries:
-            for entry in payment_entries:
-                posting_date = entry.get("posting_date")
-
-                if posting_date > due_date:
-                    paid_amount_after += entry.get("paid_amount")
-                    disallowed_amount += entry.get("paid_amount")  
-                else:
-                    paid_amount_before += entry.get("paid_amount")
-        else:
-            for entry in journal_entry:
-                posting_date = entry.get("posting_date")
-
-                if posting_date > due_date:
-                    paid_amount_after += entry.get("total_debit")
-                    disallowed_amount += entry.get("total_debit")  
-                else:
-                    paid_amount_before += entry.get("total_debit")
         if due_date < datetime.date.today() and paid_amount_after == 0:
             disallowed_amount += invoice.outstanding_amount
 
@@ -209,6 +177,39 @@ def get_data(filters):
                 'disallowed_amount': disallowed_amount 
             }
             data.append(row)
-
+    
     return data
 
+def calculate_due_date(invoice, filters, yes, no):
+    """
+    Calculate the due date based on contract status and ageing basis
+    """
+    days = yes if invoice.custom_contract_done == "Yes" else no
+    if filters.ageing_based_on == "Posting Date":
+        date_field = invoice.posting_date or invoice.bill_date
+    else:
+        date_field = invoice.bill_date or invoice.posting_date
+
+    if date_field:
+        return (date_field - datetime.timedelta(1)) + datetime.timedelta(days=days)
+    return None
+
+def calculate_payments(invoice, due_date):
+    """
+    Calculate the payments before and after due date
+    """
+    paid_amount_before = paid_amount_after = disallowed_amount = 0
+    payment_entries = frappe.get_all("Payment Entry", filters={"reference_name": invoice.name}, fields=["posting_date", "paid_amount"])
+    journal_entries = frappe.get_all("Journal Entry", filters={"reference_name": invoice.name}, fields=["posting_date", "total_debit"])
+
+    for entry in payment_entries + journal_entries:
+        posting_date = entry.get("posting_date")
+        amount = entry.get("paid_amount", 0) or entry.get("total_debit", 0)
+
+        if posting_date > due_date:
+            paid_amount_after += amount
+            disallowed_amount += amount  
+        else:
+            paid_amount_before += amount
+
+    return paid_amount_before, paid_amount_after, disallowed_amount
