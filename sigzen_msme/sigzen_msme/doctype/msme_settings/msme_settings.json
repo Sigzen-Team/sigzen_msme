@@ -1,0 +1,59 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2024-02-09 12:52:59.347872",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "msme_contract_day_section",
+  "yes",
+  "column_break_i5thp",
+  "no"
+ ],
+ "fields": [
+  {
+   "fieldname": "msme_contract_day_section",
+   "fieldtype": "Section Break",
+   "label": "MSME Contract Days"
+  },
+  {
+   "fieldname": "yes",
+   "fieldtype": "Int",
+   "label": "With Contract Payable Days"
+  },
+  {
+   "fieldname": "column_break_i5thp",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "no",
+   "fieldtype": "Int",
+   "label": "Without Contract Payable Days"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "issingle": 1,
+ "links": [],
+ "modified": "2024-02-10 11:55:30.863058",
+ "modified_by": "Administrator",
+ "module": "Sigzen Msme",
+ "name": "MSME Settings",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "create": 1,
+   "delete": 1,
+   "email": 1,
+   "print": 1,
+   "read": 1,
+   "role": "System Manager",
+   "share": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
