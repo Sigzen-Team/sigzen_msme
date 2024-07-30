@@ -1,7 +1,9 @@
 name: semgreprule
 
 on:
-  pull_request: { }
+  pull_request:
+    branches:
+      - develop
 
 jobs:
   linters:
