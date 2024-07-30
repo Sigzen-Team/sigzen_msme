@@ -2,6 +2,7 @@
 *.pyc
 *.egg-info
 *.swp
+*.yml
 tags
 sigzen_msme/docs/current
 node_modules/
