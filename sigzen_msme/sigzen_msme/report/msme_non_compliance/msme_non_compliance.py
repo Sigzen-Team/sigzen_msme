@@ -83,7 +83,6 @@ def get_data(filters):
         query = query.where(Supplier.supplier_group == filters.supplier_group)
 
     purchase_invoice_data = query.run(as_dict=True)
-
     # Fetch MSME Details
     msme_details_query = frappe.qb.from_(MSMEDetails).select(
         MSMEDetails.msme_registered,
@@ -102,6 +101,7 @@ def get_data(filters):
         msme_details_query = msme_details_query.where(MSMEDetails.msme_contract_done == filters.custom_contract_done)
 
     msme_details_data = msme_details_query.run(as_dict=True)
+    
 
     msme_settings = frappe.get_doc('MSME Settings')
     yes = msme_settings.get('yes')
@@ -110,22 +110,17 @@ def get_data(filters):
 
     # Match and avoid duplicates
     for pi in purchase_invoice_data:
-        matched = False
         for msme in msme_details_data:
-            
+            if msme["parent"] == pi["supplier"]:
             # Check if the invoice's posting date falls within the MSME's effective date range
-            if msme['effective_from'] and msme['effective_to'] and pi['posting_date']:
-                if pi['posting_date'] >= msme['effective_from'] and pi['posting_date'] <= msme['effective_to']:
-                    if not matched:  # Avoid duplicate entries
+                if all([msme.get('effective_from'), msme.get('effective_to'), pi.get('posting_date')]):
+                    if msme['effective_from'] <= pi['posting_date'] <= msme['effective_to']:
                         contract_day = msme.get('msme_contract_done')
                         due_date = calculate_due_date(pi, filters, yes, no, contract_day)
                         paid_amount_before, paid_amount_after, disallowed_amount = calculate_payments(pi, due_date)
-
                         if due_date < datetime.date.today() and paid_amount_after == 0:
                             disallowed_amount += pi.get('outstanding', 0)
-                        
                         interest_calculation = disallowed_amount * (interest / 100) if disallowed_amount > 0 else 0
-
                         if msme['msme_registered'] == "Yes" and pi.get('invoice_amount') != paid_amount_before and msme['msme_type'] != "Medium":
                             days_difference = (date.today() - due_date).days if due_date else None
                             data.append({
@@ -144,7 +139,6 @@ def get_data(filters):
                                 'disallowed_amount': disallowed_amount,
                                 'interest': interest_calculation
                             })
-                        matched = True 
     return data
 
 
