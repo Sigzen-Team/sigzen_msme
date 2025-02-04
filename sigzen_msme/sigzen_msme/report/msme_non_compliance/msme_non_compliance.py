@@ -122,7 +122,8 @@ def get_data(filters):
                             disallowed_amount += pi.get('outstanding', 0)
                         interest_calculation = disallowed_amount * (interest / 100) if disallowed_amount > 0 else 0
                         if msme['msme_registered'] == "Yes" and pi.get('invoice_amount') != paid_amount_before and msme['msme_type'] != "Medium":
-                            days_difference = (date.today() - due_date).days if due_date else None
+                            days_difference = max(0, (date.today() - due_date).days) if due_date else None
+                            print("days_difference===", days_difference)
                             data.append({
                                 'purchase_id': pi.get('purchase_id'),
                                 'supplier': pi.get('supplier'),
