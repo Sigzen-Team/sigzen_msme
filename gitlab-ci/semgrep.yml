@@ -1,0 +1,14 @@
+semgrep:
+  stage: semgrep
+  image: sigzen/sigzen-semgrep
+
+  before_script:
+    - git clone --depth 1 https://github.com/frappe/semgrep-rules.git frappe-semgrep-rules
+
+  script:
+    - semgrep scan --config ./frappe-semgrep-rules/rules --error
+  rules:
+    - if: $CI_PIPELINE_SOURCE == 'merge_request_event'
+      when: always
+  tags:
+    - ubuntu
