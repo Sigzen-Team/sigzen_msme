@@ -30,7 +30,8 @@ release_job:
       echo "Merge Request Labels: $LABELS"
 
     - VERSION_FILE=."/$CI_PROJECT_NAME/__init__.py"
-    - VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))
+    # - VERSION=$(git describe --tags $(git rev-list --tags --max-count=1))
+    - VERSION=$(git tag --sort=creatordate | tail -n 1)
     - git remote set-url origin http://sigzen:$GITLAB_TOKEN@192.168.1.51/$CI_PROJECT_PATH
     
   script:
@@ -48,6 +49,10 @@ release_job:
         PATCH=0
       elif echo "$LABELS" | grep -q "Major"; then
         MAJOR=$((MAJOR + 1))
+        MINOR=0
+        PATCH=0
+      elif [ -z "$VERSION" ]; then
+        MAJOR=1
         MINOR=0
         PATCH=0
       else
@@ -70,9 +75,9 @@ release_job:
       git tag -a $NEW_VERSION -m "Version $NEW_VERSION"
       git push origin $NEW_VERSION 
     
-  #   # And finally creating a release on the tag
+    # And finally creating a release on the tag
     - echo "running release_job for Tag $NEW_VERSION"
-    - release-cli create --description "$description" --tag-name "$NEW_VERSION" --ref "$CI_COMMIT_SHA" --assets-link "{\"url\":\"http://192.168.1.51/Sigzen-Team/forward_contract/-/compare/$VERSION...$NEW_VERSION\",\"name\":\"Changelog\"}"
+    - release-cli create --description "$description" --tag-name "$NEW_VERSION" --ref "$CI_COMMIT_SHA" --assets-link "{\"url\":\"http://192.168.1.51/Sigzen-Team/$CI_PROJECT_NAME/-/compare/$VERSION...$NEW_VERSION\",\"name\":\"Changelog\"}"
 
   rules:
     - if: '$CI_PIPELINE_SOURCE == "push" && $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
