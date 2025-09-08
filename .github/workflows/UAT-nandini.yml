@@ -1,0 +1,16 @@
+name: Pull in UAT Server At Schduled Time
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  Add_Cronjob:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Executing the Script to Add CronJob 
+        env:
+          cron: "00 22 * * *"
+        run: |
+          echo "${{ secrets.SSH_KEY_NANDINI }}" > ssh.pem
+          chmod 600 ssh.pem
+          ssh -o StrictHostKeyChecking=no -i ssh.pem ubuntu@167.71.236.52 "cd live_server_script && ./github_action.sh '$cron' 'bench-uat' 'sigzen_msme' 'staging' 'uat-nandini.sigzencloud.com'"
