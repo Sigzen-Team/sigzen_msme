@@ -9,7 +9,7 @@ jobs:
     steps:
       - name: Executing the Script to Add CronJob 
         env:
-          cron: "00 22 * * *"
+          cron: ${{ vars.CRON_TIME }}
         run: |
           echo "${{ secrets.SSH_KEY_NANDINI }}" > ssh.pem
           chmod 600 ssh.pem
