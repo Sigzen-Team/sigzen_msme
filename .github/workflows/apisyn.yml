@@ -1,0 +1,14 @@
+name: Pull in Live Server At Schduled Time
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  Add_Cronjob:
+    runs-on: [self-hosted]
+    steps:
+      - name: Executing the Script to Add CronJob 
+        env:
+          cron: ${{ vars.CRON_TIME }}
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/erpnext_key erpnext@3.6.16.190 "cd live_server_script && ./github_action.sh '$cron' 'bench-apisyn' 'sigzen_msme' 'master' 'erp.apisyn.com'"
