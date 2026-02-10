@@ -1,0 +1,14 @@
+name: Pull in Live Server At Schduled Time
+
+on: 
+  workflow_dispatch:
+
+jobs:
+  Add_Cronjob:
+    runs-on: [self-hosted]
+    steps:
+      - name: Executing the Script to Add CronJob 
+        env:
+          cron: ${{ vars.CRON_TIME }}
+        run: |
+          ssh -o StrictHostKeyChecking=no ubuntu@103.48.42.149 "cd live_server_script && ./github_action.sh '$cron' 'bench-ankitpulp' 'sigzen_msme' 'master' 'erp.celluloseankit.com'"
