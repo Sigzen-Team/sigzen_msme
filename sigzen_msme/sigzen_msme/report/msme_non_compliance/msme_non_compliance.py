@@ -1,25 +1,23 @@
 # Copyright (c) 2024, Sigzen Msme and contributors
 # For license information, please see license.txt
 
-import frappe
-from frappe import _, qb
-from frappe.utils import getdate
 import datetime
-from datetime import date
+
+import frappe
+from frappe import _
+from frappe.query_builder import DocType
+from frappe.utils import cint, flt, getdate, nowdate
+
+CHILD_FIELD = "custom_msme_details"
+
 
 def execute(filters=None):
-    """
-    Main function to execute the report and return columns and data
-    """
-    data = get_data(filters)
     columns = get_columns(filters)
+    data = get_data(filters)
     return columns, data
 
 
 def get_columns(filters):
-    """
-    Define the columns for the report
-    """
     columns = [
         {"fieldname": "purchase_id", "label": _("Purchase ID"), "fieldtype": "Link", "options": "Purchase Invoice", "width": 200},
         {"fieldname": "supplier", "label": _("Supplier"), "fieldtype": "Link", "options": "Supplier", "width": 180},
@@ -27,151 +25,224 @@ def get_columns(filters):
         {"fieldname": "contract_yes_no", "label": _("MSME Contract Done"), "fieldtype": "Data", "width": 170},
     ]
 
-    if filters.ageing_based_on == "Posting Date":
+    if filters.get("ageing_based_on") == "Posting Date":
         columns.append({"fieldname": "posting_date", "label": _("Posting Date"), "fieldtype": "Date", "width": 180})
     else:
         columns.append({"fieldname": "bill_date", "label": _("Supplier Invoice Date"), "fieldtype": "Date", "width": 180})
 
     columns.extend([
         {"fieldname": "due_date", "label": _("Due Date"), "fieldtype": "Date", "width": 180},
-        {"fieldname": "days_difference", "label": _("Days Difference"), "fieldtype": "Data", "width": 130},
         {"fieldname": "invoice_amount", "label": _("Invoice Amount"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "outstanding", "label": _("Current Outstanding"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "paid_amount_before", "label": _("Paid Amt Before Due Dt"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "paid_amount_after", "label": _("Paid Amt After Due Dt"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "disallowed_amount", "label": _("Disallowed Amount"), "fieldtype": "Currency", "width": 180},
-        {"fieldname": "interest", "label": _("Interest Amount"), "fieldtype": "Currency", "width": 180}
     ])
     return columns
 
-from frappe.query_builder import DocType
 
 def get_data(filters):
-    data = []
-    from_date = getdate(filters.from_date) if isinstance(filters.from_date, str) else filters.from_date
-    to_date = getdate(filters.to_date) if isinstance(filters.to_date, str) else filters.to_date
+    filters = filters or frappe._dict()
 
-    # Define DocTypes
-    PurchaseInvoice = DocType('Purchase Invoice')
-    Supplier = DocType('Supplier')
-    MSMEDetails = DocType('MSME Details')
+    source = frappe.db.get_single_value("MSME Settings", "msme_detail_source") or "Supplier"
+    yes_days = cint(frappe.db.get_single_value("MSME Settings", "yes"))
+    no_days = cint(frappe.db.get_single_value("MSME Settings", "no"))
 
-    # Fetch Purchase Invoice data
+    PI = DocType("Purchase Invoice")
+    S = DocType("Supplier")
+
     query = (
-        frappe.qb.from_(PurchaseInvoice)
-        .join(Supplier)
-        .on(PurchaseInvoice.supplier == Supplier.name)
+        frappe.qb.from_(PI)
+        .join(S)
+        .on(PI.supplier == S.name)
         .select(
-            PurchaseInvoice.name.as_('purchase_id'),
-            Supplier.name.as_('supplier'),
-            PurchaseInvoice.posting_date,
-            PurchaseInvoice.base_rounded_total.as_('invoice_amount'),
-            PurchaseInvoice.outstanding_amount.as_('outstanding'),
-            PurchaseInvoice.status,
-            PurchaseInvoice.bill_no.as_('supplier_no'),
-            PurchaseInvoice.bill_date
+            PI.name,
+            S.name.as_("supplier"),
+            PI.supplier_address,
+            PI.posting_date,
+            PI.base_rounded_total,
+            PI.outstanding_amount,
+            PI.status,
+            PI.bill_no,
+            PI.bill_date,
         )
         .where(
-            (PurchaseInvoice.posting_date.between(from_date, to_date)) &
-            (PurchaseInvoice.status.notin(['Cancelled', 'Draft', 'Return', 'Debit Note Issued']))
+            (PI.posting_date.between(filters.from_date, filters.to_date))
+            & (PI.docstatus == 1)
+            & (PI.status.notin(["Cancelled", "Draft", "Return", "Debit Note Issued"]))
         )
     )
-    
-    if filters.supplier:
-        query = query.where(PurchaseInvoice.supplier == filters.supplier)
-    if filters.supplier_group:
-        query = query.where(Supplier.supplier_group == filters.supplier_group)
 
-    purchase_invoice_data = query.run(as_dict=True)
-    # Fetch MSME Details
-    msme_details_query = frappe.qb.from_(MSMEDetails).select(
-        MSMEDetails.msme_registered,
-        MSMEDetails.msme_registration_no,
-        MSMEDetails.msme_type,
-        MSMEDetails.msme_contract_done,
-        MSMEDetails.effective_from,
-        MSMEDetails.effective_to,
-        MSMEDetails.parent
-    )
-    if filters.supplier:
-        msme_details_query = msme_details_query.where(MSMEDetails.parent == filters.supplier)
-    if filters.custom_msme_type:
-        msme_details_query = msme_details_query.where(MSMEDetails.msme_type == filters.custom_msme_type)
-    if filters.custom_contract_done:
-        msme_details_query = msme_details_query.where(MSMEDetails.msme_contract_done == filters.custom_contract_done)
+    if filters.get("company"):
+        query = query.where(PI.company == filters.company)
+    if filters.get("supplier"):
+        query = query.where(PI.supplier == filters.supplier)
+    if filters.get("supplier_group"):
+        query = query.where(S.supplier_group == filters.supplier_group)
 
-    msme_details_data = msme_details_query.run(as_dict=True)
-    
+    invoices = query.run(as_dict=True)
 
-    msme_settings = frappe.get_doc('MSME Settings')
-    yes = msme_settings.get('yes')
-    no = msme_settings.get('no')
-    interest = msme_settings.get('interest')
+    cache = {}
+    data = []
+    for inv in invoices:
+        reg = resolve_registration(inv, source, cache)
 
-    # Match and avoid duplicates
-    for pi in purchase_invoice_data:
-        for msme in msme_details_data:
-            if msme["parent"] == pi["supplier"]:
-            # Check if the invoice's posting date falls within the MSME's effective date range
-                if all([msme.get('effective_from'), msme.get('effective_to'), pi.get('posting_date')]):
-                    if msme['effective_from'] <= pi['posting_date'] <= msme['effective_to']:
-                        contract_day = msme.get('msme_contract_done')
-                        due_date = calculate_due_date(pi, filters, yes, no, contract_day)
-                        paid_amount_before, paid_amount_after, disallowed_amount = calculate_payments(pi, due_date)
-                        if due_date < datetime.date.today() and paid_amount_after == 0:
-                            disallowed_amount += pi.get('outstanding', 0)
-                        interest_calculation = disallowed_amount * (interest / 100) if disallowed_amount > 0 else 0
-                        if msme['msme_registered'] == "Yes" and pi.get('invoice_amount') != paid_amount_before and msme['msme_type'] != "Medium":
-                            days_difference = max(0, (date.today() - due_date).days) if due_date else None
-                            print("days_difference===", days_difference)
-                            data.append({
-                                'purchase_id': pi.get('purchase_id'),
-                                'supplier': pi.get('supplier'),
-                                'invoice_amount': pi.get('invoice_amount'),
-                                'contract_yes_no': contract_day,
-                                'posting_date': pi.get('posting_date'),
-                                'due_date': due_date,
-                                'days_difference': days_difference,
-                                'bill_date': pi.get('bill_date'),
-                                'paid_amount_after': paid_amount_after,
-                                'paid_amount_before': paid_amount_before,
-                                'outstanding': pi.get('outstanding'),
-                                'supplier_no': pi.get('supplier_no'),
-                                'disallowed_amount': disallowed_amount,
-                                'interest': interest_calculation
-                            })
+        # only registered Micro/Small suppliers are in scope (Medium is exempt)
+        if not reg or reg.get("msme_registered") != "Yes":
+            continue
+        if reg.get("msme_type") == "Medium":
+            continue
+
+        # filters now apply to the resolved registration row
+        if filters.get("custom_msme_type") and reg.get("msme_type") != filters.custom_msme_type:
+            continue
+        if filters.get("custom_contract_done") and reg.get("contract_done") != filters.custom_contract_done:
+            continue
+
+        due_date = calculate_due_date(inv, filters, reg.get("contract_done"), yes_days, no_days)
+        if not due_date:
+            continue
+
+        paid_before, paid_after, disallowed = calculate_payments(inv, due_date)
+
+        if due_date < getdate(nowdate()) and paid_after == 0:
+            disallowed += flt(inv.outstanding_amount)
+
+        if flt(inv.base_rounded_total) != paid_before:
+            data.append({
+                "purchase_id": inv.name,
+                "supplier": inv.supplier,
+                "invoice_amount": inv.base_rounded_total,
+                "contract_yes_no": reg.get("contract_done"),
+                "posting_date": inv.posting_date,
+                "due_date": due_date,
+                "bill_date": inv.bill_date,
+                "paid_amount_after": paid_after,
+                "paid_amount_before": paid_before,
+                "outstanding": inv.outstanding_amount,
+                "supplier_no": inv.bill_no,
+                "disallowed_amount": disallowed,
+            })
+
     return data
 
 
-def calculate_due_date(invoice, filters, yes, no, contract_day):
-    """
-    Calculate the due date based on contract status and ageing basis
-    """
-    days = yes if contract_day == "Yes" else no
-    date_field = invoice.posting_date or invoice.bill_date if filters.ageing_based_on == "Posting Date" else invoice.bill_date or invoice.posting_date
+def resolve_registration(inv, source, cache):
+    """Return the MSME Registration Detail row effective on the invoice date.
 
-    if date_field:  
-        return date_field + datetime.timedelta(days=days - 1)
-    
+    O4: source == "Address" -> Purchase Invoice.supplier_address, else supplier
+    primary Address, else fall back to the Supplier's own rows.
+    O3: among rows valid on the invoice date, the latest from_date wins.
+    """
+    invoice_date = getdate(inv.posting_date or inv.bill_date)
+
+    parents = []
+    if source == "Address":
+        addr = inv.supplier_address or get_primary_address(inv.supplier, cache)
+        if addr:
+            parents.append(("Address", addr))
+        parents.append(("Supplier", inv.supplier))  # graceful fallback
+    else:
+        parents.append(("Supplier", inv.supplier))
+
+    for parenttype, parent in parents:
+        rows = get_registration_rows(parenttype, parent, cache)
+        effective = pick_effective_row(rows, invoice_date)
+        if effective:
+            return effective
     return None
 
 
-def calculate_payments(invoice, due_date):
-    """
-    Calculate the payments before and after due date
-    """
-    paid_amount_before = paid_amount_after = disallowed_amount = 0
-    payment_entries = frappe.get_all("Payment Entry", filters={"reference_name": invoice.get("purchase_id")}, fields=["posting_date", "paid_amount"])
-    journal_entries = frappe.get_all("Journal Entry", filters={"reference_name": invoice.get("purchase_id")}, fields=["posting_date", "total_debit"])
+def pick_effective_row(rows, invoice_date):
+    eligible = [
+        r for r in rows
+        if r.from_date
+        and getdate(r.from_date) <= invoice_date
+        and (not r.to_date or getdate(r.to_date) >= invoice_date)
+    ]
+    if not eligible:
+        return None
+    # latest from_date wins; tie -> highest idx
+    eligible.sort(key=lambda r: (getdate(r.from_date), r.idx))
+    return eligible[-1]
 
-    for entry in payment_entries + journal_entries:
-        posting_date = entry.get("posting_date")
-        amount = entry.get("paid_amount", 0) or entry.get("total_debit", 0)
 
-        if posting_date > due_date:
-            paid_amount_after += amount
-            disallowed_amount += amount  
+def get_registration_rows(parenttype, parent, cache):
+    key = ("rows", parenttype, parent)
+    if key not in cache:
+        cache[key] = frappe.get_all(
+            "MSME Registration Detail",
+            filters={"parenttype": parenttype, "parent": parent, "parentfield": CHILD_FIELD},
+            fields=["from_date", "to_date", "msme_registered", "msme_type", "contract_done", "idx"],
+        )
+    return cache[key]
+
+
+def get_primary_address(supplier, cache):
+    key = ("addr", supplier)
+    if key not in cache:
+        addrs = frappe.get_all(
+            "Address",
+            filters=[
+                ["Dynamic Link", "link_doctype", "=", "Supplier"],
+                ["Dynamic Link", "link_name", "=", supplier],
+            ],
+            fields=["name", "is_primary_address"],
+            order_by="is_primary_address desc, creation asc",
+        )
+        cache[key] = addrs[0].name if addrs else None
+    return cache[key]
+
+
+def calculate_due_date(inv, filters, contract_done, yes_days, no_days):
+    days = yes_days if contract_done == "Yes" else no_days
+    if filters.get("ageing_based_on") == "Posting Date":
+        base = inv.posting_date or inv.bill_date
+    else:
+        base = inv.bill_date or inv.posting_date
+
+    if base:
+        return (getdate(base) - datetime.timedelta(1)) + datetime.timedelta(days=cint(days))
+    return None
+
+
+def calculate_payments(inv, due_date):
+    """Payments applied to this invoice, split before/after the due date.
+
+    Payment/Journal references live in child tables, not the parent -- read
+    Payment Entry Reference and Journal Entry Account.
+    """
+    paid_before = paid_after = disallowed = 0.0
+
+    pe_refs = frappe.get_all(
+        "Payment Entry Reference",
+        filters={"reference_doctype": "Purchase Invoice", "reference_name": inv.name, "docstatus": 1},
+        fields=["parent", "allocated_amount"],
+    )
+    payments = [
+        {"posting_date": frappe.db.get_value("Payment Entry", r.parent, "posting_date"), "amount": r.allocated_amount}
+        for r in pe_refs
+    ]
+
+    je_rows = frappe.get_all(
+        "Journal Entry Account",
+        filters={"reference_type": "Purchase Invoice", "reference_name": inv.name, "docstatus": 1},
+        fields=["parent", "debit_in_account_currency"],
+    )
+    payments += [
+        {"posting_date": frappe.db.get_value("Journal Entry", r.parent, "posting_date"), "amount": r.debit_in_account_currency}
+        for r in je_rows
+    ]
+
+    for entry in payments:
+        posting_date = entry["posting_date"]
+        amount = flt(entry["amount"])
+        if not posting_date:
+            continue
+        if getdate(posting_date) > due_date:
+            paid_after += amount
+            disallowed += amount
         else:
-            paid_amount_before += amount
+            paid_before += amount
 
-    return paid_amount_before, paid_amount_after, disallowed_amount
+    return paid_before, paid_after, disallowed

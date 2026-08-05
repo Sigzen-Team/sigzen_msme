@@ -11,7 +11,9 @@
   "yes",
   "interest",
   "column_break_i5thp",
-  "no"
+  "no",
+  "msme_data_config_section",
+  "msme_detail_source"
  ],
  "fields": [
   {
@@ -34,9 +36,17 @@
    "label": "Without Contract Payable Days"
   },
   {
-   "fieldname": "interest",
-   "fieldtype": "Percent",
-   "label": "Interest (Percent)"
+   "fieldname": "msme_data_config_section",
+   "fieldtype": "Section Break",
+   "label": "MSME Data Configuration"
+  },
+  {
+   "default": "Supplier",
+   "description": "Read MSME registration details from the Supplier master or from the Address (License Details) in reports.",
+   "fieldname": "msme_detail_source",
+   "fieldtype": "Select",
+   "label": "MSME Detail Source",
+   "options": "Supplier\nAddress"
   }
  ],
  "index_web_pages_for_search": 1,
