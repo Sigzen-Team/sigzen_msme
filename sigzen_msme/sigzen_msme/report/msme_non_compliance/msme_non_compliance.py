@@ -37,6 +37,7 @@ def get_columns(filters):
         {"fieldname": "paid_amount_before", "label": _("Paid Amt Before Due Dt"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "paid_amount_after", "label": _("Paid Amt After Due Dt"), "fieldtype": "Currency", "width": 180},
         {"fieldname": "disallowed_amount", "label": _("Disallowed Amount"), "fieldtype": "Currency", "width": 180},
+        {"fieldname": "interest", "label": _("Interest Amount"), "fieldtype": "Currency", "width": 180},
     ])
     return columns
 
@@ -47,6 +48,7 @@ def get_data(filters):
     source = frappe.db.get_single_value("MSME Settings", "msme_detail_source") or "Supplier"
     yes_days = cint(frappe.db.get_single_value("MSME Settings", "yes"))
     no_days = cint(frappe.db.get_single_value("MSME Settings", "no"))
+    interest_pct = flt(frappe.db.get_single_value("MSME Settings", "interest"))
 
     PI = DocType("Purchase Invoice")
     S = DocType("Supplier")
@@ -108,6 +110,8 @@ def get_data(filters):
         if due_date < getdate(nowdate()) and paid_after == 0:
             disallowed += flt(inv.outstanding_amount)
 
+        interest_amount = disallowed * interest_pct / 100 if disallowed > 0 else 0
+
         if flt(inv.base_rounded_total) != paid_before:
             data.append({
                 "purchase_id": inv.name,
@@ -122,6 +126,7 @@ def get_data(filters):
                 "outstanding": inv.outstanding_amount,
                 "supplier_no": inv.bill_no,
                 "disallowed_amount": disallowed,
+                "interest": interest_amount,
             })
 
     return data
