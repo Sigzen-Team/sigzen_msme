@@ -98,10 +98,10 @@ def get_data(filters):
         # filters now apply to the resolved registration row
         if filters.get("custom_msme_type") and reg.get("msme_type") != filters.custom_msme_type:
             continue
-        if filters.get("custom_contract_done") and reg.get("contract_done") != filters.custom_contract_done:
+        if filters.get("custom_contract_done") and reg.get("msme_contract_done") != filters.custom_contract_done:
             continue
 
-        due_date = calculate_due_date(inv, filters, reg.get("contract_done"), yes_days, no_days)
+        due_date = calculate_due_date(inv, filters, reg.get("msme_contract_done"), yes_days, no_days)
         if not due_date:
             continue
 
@@ -117,7 +117,7 @@ def get_data(filters):
                 "purchase_id": inv.name,
                 "supplier": inv.supplier,
                 "invoice_amount": inv.base_rounded_total,
-                "contract_yes_no": reg.get("contract_done"),
+                "contract_yes_no": reg.get("msme_contract_done"),
                 "posting_date": inv.posting_date,
                 "due_date": due_date,
                 "bill_date": inv.bill_date,
@@ -137,7 +137,7 @@ def resolve_registration(inv, source, cache):
 
     O4: source == "Address" -> Purchase Invoice.supplier_address, else supplier
     primary Address, else fall back to the Supplier's own rows.
-    O3: among rows valid on the invoice date, the latest from_date wins.
+    O3: among rows valid on the invoice date, the latest effective_from wins.
     """
     invoice_date = getdate(inv.posting_date or inv.bill_date)
 
@@ -161,14 +161,14 @@ def resolve_registration(inv, source, cache):
 def pick_effective_row(rows, invoice_date):
     eligible = [
         r for r in rows
-        if r.from_date
-        and getdate(r.from_date) <= invoice_date
-        and (not r.to_date or getdate(r.to_date) >= invoice_date)
+        if r.effective_from
+        and getdate(r.effective_from) <= invoice_date
+        and (not r.effective_to or getdate(r.effective_to) >= invoice_date)
     ]
     if not eligible:
         return None
-    # latest from_date wins; tie -> highest idx
-    eligible.sort(key=lambda r: (getdate(r.from_date), r.idx))
+    # latest effective_from wins; tie -> highest idx
+    eligible.sort(key=lambda r: (getdate(r.effective_from), r.idx))
     return eligible[-1]
 
 
@@ -178,7 +178,7 @@ def get_registration_rows(parenttype, parent, cache):
         cache[key] = frappe.get_all(
             "MSME Registration Detail",
             filters={"parenttype": parenttype, "parent": parent, "parentfield": CHILD_FIELD},
-            fields=["from_date", "to_date", "msme_registered", "msme_type", "contract_done", "idx"],
+            fields=["effective_from", "effective_to", "msme_registered", "msme_type", "msme_contract_done", "idx"],
         )
     return cache[key]
 

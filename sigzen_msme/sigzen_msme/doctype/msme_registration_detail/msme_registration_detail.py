@@ -8,5 +8,5 @@ from frappe.model.document import Document
 
 class MSMERegistrationDetail(Document):
 	def validate(self):
-		if self.to_date and self.from_date and self.to_date < self.from_date:
-			frappe.throw(_("Row {0}: To Date cannot be before From Date").format(self.idx))
+		if self.effective_to and self.effective_from and self.effective_to < self.effective_from:
+			frappe.throw(_("Row {0}: Effective To cannot be before Effective From").format(self.idx))
