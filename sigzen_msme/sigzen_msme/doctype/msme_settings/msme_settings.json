@@ -11,7 +11,9 @@
   "yes",
   "interest",
   "column_break_i5thp",
-  "no"
+  "no",
+  "msme_data_config_section",
+  "msme_detail_source"
  ],
  "fields": [
   {
@@ -25,6 +27,12 @@
    "label": "With Contract Payable Days"
   },
   {
+   "description": "Interest rate applied to the overdue (disallowed) amount to estimate interest payable to MSME suppliers on delayed payment (MSMED Act Sec 16).",
+   "fieldname": "interest",
+   "fieldtype": "Percent",
+   "label": "Interest (Percent)"
+  },
+  {
    "fieldname": "column_break_i5thp",
    "fieldtype": "Column Break"
   },
@@ -34,9 +42,17 @@
    "label": "Without Contract Payable Days"
   },
   {
-   "fieldname": "interest",
-   "fieldtype": "Percent",
-   "label": "Interest (Percent)"
+   "fieldname": "msme_data_config_section",
+   "fieldtype": "Section Break",
+   "label": "MSME Data Configuration"
+  },
+  {
+   "default": "Supplier",
+   "description": "Read MSME registration details from the Supplier master or from the Address (License Details) in reports.",
+   "fieldname": "msme_detail_source",
+   "fieldtype": "Select",
+   "label": "MSME Detail Source",
+   "options": "Supplier\nAddress"
   }
  ],
  "index_web_pages_for_search": 1,
