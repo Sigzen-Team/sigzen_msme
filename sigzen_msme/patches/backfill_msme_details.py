@@ -1,7 +1,7 @@
 """Backfill the new MSME Registration Detail child table on Supplier from the
 legacy flat custom fields.
 
-from_date for migrated rows = current fiscal year start date (TL decision O1).
+effective_from for migrated rows = current fiscal year start date (TL decision O1).
 Idempotent: skips any supplier that already has child rows.
 """
 
@@ -40,11 +40,11 @@ def execute():
         doc.append(
             "custom_msme_details",
             {
-                "from_date": fy_start,
+                "effective_from": fy_start,
                 "msme_registered": s.custom_msme_registered,
                 "msme_registration_no": s.custom_msme_registration_no,
                 "msme_type": s.custom_msme_type,
-                "contract_done": s.custom_contract_done,
+                "msme_contract_done": s.custom_contract_done,
             },
         )
         doc.flags.ignore_validate = True

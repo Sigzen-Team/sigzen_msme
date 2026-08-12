@@ -4,3 +4,4 @@
 sigzen_msme.patches.create_msme_custom_fields #1
 sigzen_msme.patches.backfill_msme_details #1
 sigzen_msme.patches.remove_flat_msme_fields
+sigzen_msme.patches.migrate_msme_reg_detail_data

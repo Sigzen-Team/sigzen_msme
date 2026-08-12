@@ -6,27 +6,27 @@
  "editable_grid": 1,
  "engine": "InnoDB",
  "field_order": [
-  "from_date",
-  "to_date",
+  "effective_from",
+  "effective_to",
   "msme_registered",
   "column_break_msme",
   "msme_registration_no",
   "msme_type",
-  "contract_done"
+  "msme_contract_done"
  ],
  "fields": [
   {
-   "fieldname": "from_date",
+   "fieldname": "effective_from",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "From Date",
+   "label": "Effective From",
    "reqd": 1
   },
   {
-   "fieldname": "to_date",
+   "fieldname": "effective_to",
    "fieldtype": "Date",
    "in_list_view": 1,
-   "label": "To Date"
+   "label": "Effective To"
   },
   {
    "fieldname": "msme_registered",
@@ -59,7 +59,7 @@
   },
   {
    "depends_on": "eval:doc.msme_registered=='Yes'",
-   "fieldname": "contract_done",
+   "fieldname": "msme_contract_done",
    "fieldtype": "Select",
    "label": "MSME Contract Done",
    "options": "\nYes\nNo"
