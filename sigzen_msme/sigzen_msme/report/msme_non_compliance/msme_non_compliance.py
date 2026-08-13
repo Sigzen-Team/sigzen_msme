@@ -193,7 +193,7 @@ def get_primary_address(supplier, cache):
                 ["Dynamic Link", "link_name", "=", supplier],
             ],
             fields=["name", "is_primary_address"],
-            order_by="is_primary_address desc, creation asc",
+            order_by="is_primary_address desc, `tabAddress`.creation asc",
         )
         cache[key] = addrs[0].name if addrs else None
     return cache[key]
