@@ -127,6 +127,17 @@ before_uninstall = "sigzen_msme.uninstall.before_uninstall"
 # 	}
 # }
 
+# Validate MSME Registration Detail rows from the parent -- a child DocType's own
+# validate() does not run on parent save.
+doc_events = {
+	"Supplier": {
+		"validate": "sigzen_msme.msme_validation.validate_msme_details",
+	},
+	"Address": {
+		"validate": "sigzen_msme.msme_validation.validate_msme_details",
+	},
+}
+
 # Scheduled Tasks
 # ---------------
 
