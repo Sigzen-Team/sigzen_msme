@@ -1,4 +1,4 @@
-name: Pull in UAT Server At Schduled Time
+name: Pull in UAT Ankitpulp Server At Schduled Time
 
 on: 
   workflow_dispatch:
