@@ -19,34 +19,31 @@ def execute():
 
     fy_start = _current_fiscal_year_start()
 
-    suppliers = frappe.get_all(
-        "Supplier",
-        filters={"custom_msme_registered": ["in", ["Yes", "No"]]},
-        fields=[
-            "name",
-            "custom_msme_registered",
-            "custom_msme_registration_no",
-            "custom_msme_type",
-            "custom_contract_done",
-        ],
-    )
+    # legacy flat field -> child table field; only use the ones present on this site
+    field_map = {
+        "custom_msme_registered": "msme_registered",
+        "custom_msme_registration_no": "msme_registration_no",
+        "custom_msme_type": "msme_type",
+        "custom_contract_done": "msme_contract_done",
+    }
+    field_map = {old: new for old, new in field_map.items() if frappe.db.has_column("Supplier", old)}
+    if not field_map:
+        return  # no legacy fields on this site, nothing to backfill
+
+    # supplier qualifies if any existing legacy field has a value
+    or_filters = [["Supplier", old, "is", "set"] for old in field_map]
+
+    suppliers = frappe.get_all("Supplier", or_filters=or_filters, fields=["name", *field_map])
 
     migrated = 0
     for s in suppliers:
+        values = {new: s.get(old) for old, new in field_map.items() if s.get(old)}
+
         doc = frappe.get_doc("Supplier", s.name)
         if doc.get("custom_msme_details"):
             continue  # already migrated
 
-        doc.append(
-            "custom_msme_details",
-            {
-                "effective_from": fy_start,
-                "msme_registered": s.custom_msme_registered,
-                "msme_registration_no": s.custom_msme_registration_no,
-                "msme_type": s.custom_msme_type,
-                "msme_contract_done": s.custom_contract_done,
-            },
-        )
+        doc.append("custom_msme_details", {"effective_from": fy_start, **values})
         doc.flags.ignore_validate = True
         doc.flags.ignore_mandatory = True
         doc.save(ignore_permissions=True)
