@@ -27,7 +27,10 @@ app_license = "MIT"
 # page_js = {"page" : "public/js/file.js"}
 
 # include js in doctype views
-# doctype_js = {"doctype" : "public/js/doctype.js"}
+doctype_js = {
+	"Supplier": "public/js/supplier.js",
+	"Address": "public/js/address.js",
+}
 # doctype_list_js = {"doctype" : "public/js/doctype_list.js"}
 # doctype_tree_js = {"doctype" : "public/js/doctype_tree.js"}
 # doctype_calendar_js = {"doctype" : "public/js/doctype_calendar.js"}
@@ -62,12 +65,12 @@ after_migrate = "sigzen_msme.install.after_install"
 # ------------
 
 # before_install = "sigzen_msme.install.before_install"
-# after_install = "sigzen_msme.install.after_install"
+after_install = "sigzen_msme.install.after_install"
 
 # Uninstallation
 # ------------
 
-# before_uninstall = "sigzen_msme.uninstall.before_uninstall"
+before_uninstall = "sigzen_msme.uninstall.before_uninstall"
 # after_uninstall = "sigzen_msme.uninstall.after_uninstall"
 
 # Integration Setup
@@ -123,6 +126,17 @@ after_migrate = "sigzen_msme.install.after_install"
 # 		"on_trash": "method"
 # 	}
 # }
+
+# Validate MSME Registration Detail rows from the parent -- a child DocType's own
+# validate() does not run on parent save.
+doc_events = {
+	"Supplier": {
+		"validate": "sigzen_msme.msme_validation.validate_msme_details",
+	},
+	"Address": {
+		"validate": "sigzen_msme.msme_validation.validate_msme_details",
+	},
+}
 
 # Scheduled Tasks
 # ---------------

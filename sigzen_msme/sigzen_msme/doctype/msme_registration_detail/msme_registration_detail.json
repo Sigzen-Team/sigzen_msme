@@ -1,0 +1,80 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "creation": "2026-08-05 10:00:00.000000",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "effective_from",
+  "effective_to",
+  "msme_registered",
+  "column_break_msme",
+  "msme_registration_no",
+  "msme_type",
+  "msme_contract_done"
+ ],
+ "fields": [
+  {
+   "fieldname": "effective_from",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Effective From",
+   "reqd": 1
+  },
+  {
+   "fieldname": "effective_to",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Effective To"
+  },
+  {
+   "fieldname": "msme_registered",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "MSME Registered",
+   "options": "\nYes\nNo",
+   "reqd": 1
+  },
+  {
+   "fieldname": "column_break_msme",
+   "fieldtype": "Column Break"
+  },
+  {
+   "depends_on": "eval:doc.msme_registered=='Yes'",
+   "fieldname": "msme_registration_no",
+   "fieldtype": "Data",
+   "in_list_view": 1,
+   "label": "MSME Registration No",
+   "mandatory_depends_on": "eval:doc.msme_registered=='Yes'"
+  },
+  {
+   "depends_on": "eval:doc.msme_registered=='Yes'",
+   "fieldname": "msme_type",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "MSME Type",
+   "mandatory_depends_on": "eval:doc.msme_registered=='Yes'",
+   "options": "\nMicro\nSmall\nMedium"
+  },
+  {
+   "depends_on": "eval:doc.msme_registered=='Yes'",
+   "fieldname": "msme_contract_done",
+   "fieldtype": "Select",
+   "label": "MSME Contract Done",
+   "options": "\nYes\nNo"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2026-08-05 10:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Sigzen Msme",
+ "name": "MSME Registration Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}
